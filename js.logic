@@ -1,0 +1,246 @@
+// DOM Elements
+const passwordOutput = document.getElementById('password-output');
+const copyIcon = document.getElementById('copy-icon');
+const copyFeedback = document.getElementById('copy-feedback');
+const lengthSlider = document.getElementById('length-slider');
+const lengthDisplay = document.getElementById('length-display');
+const lowercaseCheckbox = document.getElementById('lowercase');
+const uppercaseCheckbox = document.getElementById('uppercase');
+const numbersCheckbox = document.getElementById('numbers');
+const symbolsCheckbox = document.getElementById('symbols');
+const excludeDuplicatesCheckbox = document.getElementById('exclude-duplicates');
+const includeSpacesCheckbox = document.getElementById('include-spaces');
+const generateBtn = document.getElementById('generate-btn');
+const strengthBar = document.getElementById('strength-bar');
+const strengthText = document.getElementById('strength-text');
+const entropyValue = document.getElementById('entropy-value');
+
+// Character sets
+const charSets = {
+    lowercase: "abcdefghijklmnopqrstuvwxyz",
+    uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    numbers: "0123456789",
+    symbols: "!@#$%^&*()-_+=[]{}|;:,.<>?/~" // Extended symbol set
+};
+
+/**
+ * Generates a password based on selected options.
+ */
+const generatePassword = () => {
+    let activeCharSet = "";
+    let password = "";
+    let includeCategories = []; // Track selected categories for forced inclusion
+
+    // Build the character set based on selected options
+    if (lowercaseCheckbox.checked) {
+        activeCharSet += charSets.lowercase;
+        includeCategories.push(charSets.lowercase);
+    }
+    if (uppercaseCheckbox.checked) {
+        activeCharSet += charSets.uppercase;
+        includeCategories.push(charSets.uppercase);
+    }
+    if (numbersCheckbox.checked) {
+        activeCharSet += charSets.numbers;
+        includeCategories.push(charSets.numbers);
+    }
+    if (symbolsCheckbox.checked) {
+        activeCharSet += charSets.symbols;
+        includeCategories.push(charSets.symbols);
+    }
+    if (includeSpacesCheckbox.checked) {
+        activeCharSet += " "; // Add space
+    }
+
+    const passLength = parseInt(lengthSlider.value);
+
+    // Ensure at least one character from each selected category is included
+    // This makes passwords more balanced when multiple categories are chosen
+    for (let i = 0; i < includeCategories.length; i++) {
+        const category = includeCategories[i];
+        const randomChar = category[Math.floor(Math.random() * category.length)];
+        password += randomChar;
+    }
+
+    // Fill the rest of the password length
+    for (let i = password.length; i < passLength; i++) {
+        if (activeCharSet.length === 0) {
+            // No character types selected, prevent infinite loop
+            password = "";
+            break;
+        }
+        let randomChar = activeCharSet[Math.floor(Math.random() * activeCharSet.length)];
+
+        if (excludeDuplicatesCheckbox.checked) {
+            // Ensure unique characters (unless it's a space)
+            if (password.includes(randomChar) && randomChar !== ' ') {
+                i--; // Decrement i to retry this position
+                continue;
+            }
+        }
+        password += randomChar;
+    }
+
+    // Shuffle the password to randomize the position of forced characters
+    password = shuffleString(password);
+
+    // If no character types selected, display a message
+    if (activeCharSet.length === 0) {
+        passwordOutput.value = "Select at least one character type!";
+        updateStrengthDisplay(""); // Reset strength display
+    } else if (password.length > passLength) {
+        // Trim if shuffling somehow added extra characters (shouldn't happen with current logic, but good safeguard)
+        passwordOutput.value = password.substring(0, passLength);
+    }
+    else {
+        passwordOutput.value = password;
+        updateStrengthDisplay(password);
+    }
+
+    // Ensure at least one category is checked
+    const anyCategoryChecked = lowercaseCheckbox.checked || uppercaseCheckbox.checked || numbersCheckbox.checked || symbolsCheckbox.checked || includeSpacesCheckbox.checked;
+    if (!anyCategoryChecked) {
+        passwordOutput.value = "Please select at least one character type!";
+        updateStrengthDisplay("");
+    }
+};
+
+/**
+ * Shuffles a string randomly.
+ * @param {string} str - The input string.
+ * @returns {string} The shuffled string.
+ */
+const shuffleString = (str) => {
+    let a = str.split("");
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.join("");
+};
+
+
+/**
+ * Calculates the entropy of a password and updates the strength display.
+ * Entropy (bits) = log2(charset_size^length) = length * log2(charset_size)
+ * @param {string} password - The generated password.
+ */
+const updateStrengthDisplay = (password) => {
+    let possibleCharacters = 0;
+    if (lowercaseCheckbox.checked) possibleCharacters += charSets.lowercase.length;
+    if (uppercaseCheckbox.checked) possibleCharacters += charSets.uppercase.length;
+    if (numbersCheckbox.checked) possibleCharacters += charSets.numbers.length;
+    if (symbolsCheckbox.checked) possibleCharacters += charSets.symbols.length;
+    if (includeSpacesCheckbox.checked) possibleCharacters += 1; // Add 1 for space character
+
+    const length = password.length;
+    let entropy = 0;
+
+    if (possibleCharacters > 0 && length > 0) {
+        entropy = length * (Math.log2(possibleCharacters));
+    }
+
+    // Update entropy value display
+    entropyValue.textContent = `Entropy: ${Math.round(entropy)} bits`;
+
+    // Update strength bar and text based on entropy
+    let barWidth = 0;
+    let barColor = "#ccc"; // Default gray
+    let strengthLevel = "Too Short";
+
+    if (length < 6) { // Very weak for extremely short passwords
+        strengthLevel = "Too Short";
+        barWidth = 0;
+    } else if (entropy < 40) {
+        strengthLevel = "Very Weak";
+        barWidth = (entropy / 40) * 20; // Scale to first 20%
+        barColor = "#ef4444"; // Red
+    } else if (entropy < 60) {
+        strengthLevel = "Weak";
+        barWidth = 20 + ((entropy - 40) / 20) * 20; // Scale from 20% to 40%
+        barColor = "#f97316"; // Orange
+    } else if (entropy < 80) {
+        strengthLevel = "Moderate";
+        barWidth = 40 + ((entropy - 60) / 20) * 20; // Scale from 40% to 60%
+        barColor = "#f59e0b"; // Amber
+    } else if (entropy < 100) {
+        strengthLevel = "Strong";
+        barWidth = 60 + ((entropy - 80) / 20) * 20; // Scale from 60% to 80%
+        barColor = "#22c55e"; // Green
+    } else {
+        strengthLevel = "Excellent!";
+        barWidth = 100;
+        barColor = "#16a34a"; // Darker green
+    }
+
+    strengthBar.style.width = `${Math.min(100, barWidth)}%`; // Cap at 100%
+    strengthBar.style.backgroundColor = barColor;
+    strengthText.textContent = strengthLevel;
+
+    // Change text color for feedback
+    if (strengthLevel === "Very Weak" || strengthLevel === "Too Short") {
+        strengthText.className = "text-center font-bold text-lg mt-3 text-red-400";
+    } else if (strengthLevel === "Weak") {
+        strengthText.className = "text-center font-bold text-lg mt-3 text-orange-400";
+    } else if (strengthLevel === "Moderate") {
+        strengthText.className = "text-center font-bold text-lg mt-3 text-amber-400";
+    } else if (strengthLevel === "Strong" || strengthLevel === "Excellent!") {
+        strengthText.className = "text-center font-bold text-lg mt-3 text-green-400";
+    } else {
+        strengthText.className = "text-center font-bold text-lg mt-3 text-white"; // Default
+    }
+
+};
+
+
+/**
+ * Copies the generated password to the clipboard.
+ */
+const copyPassword = () => {
+    try {
+        if (passwordOutput.value && passwordOutput.value !== "Please select at least one character type!") {
+            // Select the text in the input field
+            passwordOutput.select();
+            // For mobile devices, ensure the selection is visible and effective
+            passwordOutput.setSelectionRange(0, 99999); // For mobile devices
+
+            // Execute the copy command
+            document.execCommand('copy');
+
+            copyFeedback.classList.remove('hidden'); // Show "Copied!" feedback
+            copyIcon.textContent = 'check_circle'; // Change icon to checkmark
+            copyIcon.classList.remove('text-gray-400', 'hover:text-purple-400');
+            copyIcon.classList.add('text-green-400'); // Green checkmark
+
+            setTimeout(() => {
+                copyFeedback.classList.add('hidden'); // Hide feedback
+                copyIcon.textContent = 'content_copy'; // Revert icon
+                copyIcon.classList.remove('text-green-400');
+                copyIcon.classList.add('text-gray-400', 'hover:text-purple-400');
+            }, 1500);
+        }
+    } catch (err) {
+        console.error('Failed to copy password: ', err);
+        // Fallback for older browsers or specific iframe restrictions if needed
+        // For Canvas, navigator.clipboard.writeText usually works, but document.execCommand('copy') is a safer fallback here.
+    }
+};
+
+// Event Listeners
+lengthSlider.addEventListener('input', () => {
+    lengthDisplay.textContent = lengthSlider.value;
+    generatePassword(); // Regenerate password on length change
+});
+
+// Regenerate password when any setting checkbox changes
+[lowercaseCheckbox, uppercaseCheckbox, numbersCheckbox, symbolsCheckbox, excludeDuplicatesCheckbox, includeSpacesCheckbox].forEach(checkbox => {
+    checkbox.addEventListener('change', generatePassword);
+});
+
+generateBtn.addEventListener('click', generatePassword);
+copyIcon.addEventListener('click', copyPassword);
+
+// Initial generation and strength update on page load
+document.addEventListener('DOMContentLoaded', () => {
+    generatePassword();
+});
