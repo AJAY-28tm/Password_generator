@@ -1,0 +1,49 @@
+/* Custom styles not easily done with Tailwind or for overrides */
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #1a202c, #2d3748); /* Darker, professional gradient */
+}
+/* Hide default checkbox */
+.custom-checkbox input[type="checkbox"] {
+    display: none;
+}
+/* Style for custom checkbox */
+.custom-checkbox label {
+    position: relative;
+    padding-left: 1.75rem; /* Space for the custom box */
+    cursor: pointer;
+    color: #cbd5e0; /* Light gray text */
+    user-select: none; /* Prevent text selection */
+}
+.custom-checkbox label::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.25rem; /* Size of the custom box */
+    height: 1.25rem;
+    border: 2px solid #4a5568; /* Border color */
+    background-color: #2d3748; /* Background of unchecked box */
+    border-radius: 0.375rem; /* Rounded corners for the box */
+    transition: all 0.2s ease-in-out;
+}
+.custom-checkbox input[type="checkbox"]:checked + label::before {
+    background-color: #48bb78; /* Green for checked */
+    border-color: #48bb78;
+}
+.custom-checkbox label::after {
+    content: '';
+    position: absolute;
+    left: 0.4rem; /* Position of the checkmark */
+    top: 0.15rem;
+    width: 0.5rem; /* Checkmark width */
+    height: 0.8rem; /* Checkmark height */
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s ease-in-out;
+}
+.custom-checkbox input[type="checkbox"]:checked + label::after {
+    opacity: 1; /* Show checkmark when checked */
+}
